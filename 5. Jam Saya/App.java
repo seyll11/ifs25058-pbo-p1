@@ -1,110 +1,129 @@
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Scanner;
 
+/**
+ * Studi kasus 5: Jam Saya (perhitungan pergeseran jam tanpa API waktu Java).
+ *
+ * Input: jam awal "HH:MM", lalu perintah pergeseran menit ("+N" / "-N") hingga "---".
+ * Setiap kali jam melewati batas 24 jam (maju atau mundur), Pergantian Hari bertambah.
+ */
 public class App {
+
+    private static final int MENIT_PER_JAM = 60;
+    private static final int MENIT_PER_HARI = 24 * MENIT_PER_JAM;
+    private static final String PENANDA_SELESAI = "---";
+    private static final String FORMAT_PERINTAH = "[+-]\\d+";
+
+    /** Keadaan jam yang terus digeser. */
+    private static class JamSaya {
+        private final int jamAwal;
+        private final int menitAwal;
+        private long menitSekarang;
+        private long totalGeser = 0;
+        private long pergantianHari = 0;
+
+        JamSaya(int jam, int menit) {
+            this.jamAwal = jam;
+            this.menitAwal = menit;
+            this.menitSekarang = jam * MENIT_PER_JAM + menit;
+        }
+
+        void geser(long menit) {
+            totalGeser += menit;
+            menitSekarang += menit;
+            pergantianHari += Math.abs(Math.floorDiv(menitSekarang, (long) MENIT_PER_HARI));
+            menitSekarang = Math.floorMod(menitSekarang, (long) MENIT_PER_HARI);
+        }
+
+        int jamAkhir() {
+            return (int) (menitSekarang / MENIT_PER_JAM);
+        }
+
+        int menitAkhir() {
+            return (int) (menitSekarang % MENIT_PER_JAM);
+        }
+    }
+
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
+        try (Scanner sc = new Scanner(System.in)) {
+            JamSaya jam = bacaJamAwal(sc);
+            if (jam == null) {
+                System.out.println("Jam tidak valid");
+                return;
+            }
 
-        // Baris 1-6: bobot tiap komponen
-        int bobotPA = Integer.parseInt(sc.nextLine().trim());
-        int bobotT = Integer.parseInt(sc.nextLine().trim());
-        int bobotK = Integer.parseInt(sc.nextLine().trim());
-        int bobotP = Integer.parseInt(sc.nextLine().trim());
-        int bobotUTS = Integer.parseInt(sc.nextLine().trim());
-        int bobotUAS = Integer.parseInt(sc.nextLine().trim());
+            bacaPerintah(sc, jam);
+            tampilkanHasil(jam);
+        }
+    }
 
-        int totalBobot = bobotPA + bobotT + bobotK + bobotP + bobotUTS + bobotUAS;
-        if (totalBobot != 100) {
-            System.out.println("Total bobot harus 100");
-            return;
+    // ------------------------------------------------------------------
+    // Input & validasi
+    // ------------------------------------------------------------------
+
+    /** Membaca "HH:MM". Mengembalikan null jika format atau rentangnya salah. */
+    private static JamSaya bacaJamAwal(Scanner sc) {
+        if (!sc.hasNextLine()) {
+            return null;
         }
 
-        // Bobot header per simbol (dipakai untuk kontribusi nilai akhir)
-        Map<String, Integer> bobotHeader = new LinkedHashMap<>();
-        bobotHeader.put("PA", bobotPA);
-        bobotHeader.put("T", bobotT);
-        bobotHeader.put("K", bobotK);
-        bobotHeader.put("P", bobotP);
-        bobotHeader.put("UTS", bobotUTS);
-        bobotHeader.put("UAS", bobotUAS);
-
-        // Akumulasi bobot & perolehan dari baris data komponen
-        Map<String, Integer> totalKomponen = new LinkedHashMap<>();
-        Map<String, Integer> perolehanKomponen = new LinkedHashMap<>();
-        for (String s : bobotHeader.keySet()) {
-            totalKomponen.put(s, 0);
-            perolehanKomponen.put(s, 0);
+        String[] bagian = sc.nextLine().trim().split(":", -1);
+        if (bagian.length != 2) {
+            return null;
         }
 
+        try {
+            int jam = Integer.parseInt(bagian[0].trim());
+            int menit = Integer.parseInt(bagian[1].trim());
+            boolean diLuarRentang = jam < 0 || jam > 23 || menit < 0 || menit > 59;
+            return diLuarRentang ? null : new JamSaya(jam, menit);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static void bacaPerintah(Scanner sc, JamSaya jam) {
         while (sc.hasNextLine()) {
-            String line = sc.nextLine();
-            if (line.trim().equals("---")) break;
-
-            String[] parts = line.split("\\|", -1);
-            if (parts.length != 3) {
-                System.out.println("Data tidak valid. Silahkan menggunakan format: Simbol|Bobot|Perolehan-Nilai");
+            String baris = sc.nextLine().trim();
+            if (baris.equals(PENANDA_SELESAI)) {
+                break;
+            }
+            if (baris.isEmpty()) {
                 continue;
             }
 
-            String simbol = parts[0].trim();
-            String bobotStr = parts[1].trim();
-            String perolehanStr = parts[2].trim();
-
-            int bobot;
-            int perolehan;
-            try {
-                bobot = Integer.parseInt(bobotStr);
-                perolehan = Integer.parseInt(perolehanStr);
-            } catch (NumberFormatException e) {
-                System.out.println("Data tidak valid. Silahkan menggunakan format: Simbol|Bobot|Perolehan-Nilai");
+            Long geser = parsePerintah(baris);
+            if (geser == null) {
+                System.out.println("Perintah tidak valid");
                 continue;
             }
-
-            if (!bobotHeader.containsKey(simbol)) {
-                System.out.println("Simbol tidak dikenal");
-                continue;
-            }
-
-            // Clamp perolehan ke rentang [0, bobot]
-            if (perolehan > bobot) perolehan = bobot;
-            if (perolehan < 0) perolehan = 0;
-
-            totalKomponen.put(simbol, totalKomponen.get(simbol) + bobot);
-            perolehanKomponen.put(simbol, perolehanKomponen.get(simbol) + perolehan);
+            jam.geser(geser);
         }
+    }
 
-        String[] urutanSimbol = {"PA", "T", "K", "P", "UTS", "UAS"};
-        String[] label = {"Partisipatif", "Tugas", "Kuis", "Proyek", "UTS", "UAS"};
-
-        double nilaiAkhir = 0;
-        StringBuilder sb = new StringBuilder();
-        sb.append("Perolehan Nilai:\n");
-        for (int i = 0; i < urutanSimbol.length; i++) {
-            String s = urutanSimbol[i];
-            int total = totalKomponen.get(s);
-            int perolehan = perolehanKomponen.get(s);
-
-            int persen = (total == 0) ? 0 : (perolehan * 100) / total; // integer
-            double kontribusi = (persen / 100.0) * bobotHeader.get(s); // double
-            nilaiAkhir += kontribusi;
-
-            sb.append(String.format(">> %s: %d/100 (%.2f/%d)\n",
-                    label[i], persen, kontribusi, bobotHeader.get(s)));
+    /** Mengubah "+N" / "-N" menjadi angka bertanda; null jika formatnya salah. */
+    private static Long parsePerintah(String perintah) {
+        if (!perintah.matches(FORMAT_PERINTAH)) {
+            return null;
         }
+        try {
+            return Long.parseLong(perintah.substring(1)) * (perintah.charAt(0) == '-' ? -1 : 1);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
-        String grade;
-        if (nilaiAkhir >= 79.5) grade = "A";
-        else if (nilaiAkhir >= 72) grade = "AB";
-        else if (nilaiAkhir >= 64.5) grade = "B";
-        else if (nilaiAkhir >= 56.5) grade = "BC";
-        else if (nilaiAkhir >= 49.5) grade = "C";
-        else if (nilaiAkhir >= 34) grade = "D";
-        else grade = "E";
+    // ------------------------------------------------------------------
+    // Output
+    // ------------------------------------------------------------------
 
-        System.out.print(sb);
-        System.out.println();
-        System.out.printf(">> Nilai Akhir: %.2f%n", nilaiAkhir);
-        System.out.println(">> Grade: " + grade);
+    private static void tampilkanHasil(JamSaya jam) {
+        System.out.printf("Jam Awal: %02d:%02d%n", jam.jamAwal, jam.menitAwal);
+        System.out.printf("Jam Akhir: %02d:%02d%n", jam.jamAkhir(), jam.menitAkhir());
+        System.out.println("Total Menit: " + formatTotalMenit(jam.totalGeser));
+        System.out.println("Pergantian Hari: " + jam.pergantianHari);
+    }
+
+    private static String formatTotalMenit(long total) {
+        return total > 0 ? "+" + total : String.valueOf(total);
     }
 }
