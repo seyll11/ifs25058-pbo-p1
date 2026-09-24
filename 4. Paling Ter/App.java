@@ -1,70 +1,123 @@
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
+/**
+ * Studi kasus 4: Paling Ter (statistik sederhana dari deretan bilangan).
+ *
+ * Aturan seri:
+ *   - Terbanyak / Jumlah Tertinggi : nilai yang lebih besar menang.
+ *   - Tersedikit / Jumlah Terendah : nilai yang lebih kecil menang.
+ */
 public class App {
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        int n = Integer.parseInt(sc.nextLine().trim());
 
-        int[][] matrix = new int[n][n];
-        for (int i = 0; i < n; i++) {
-            String[] tokens = sc.nextLine().trim().split("\\s+");
-            for (int j = 0; j < n; j++) {
-                matrix[i][j] = Integer.parseInt(tokens[j]);
+    private static final String PENANDA_SELESAI = "---";
+
+    /** Satu nilai unik beserta frekuensi kemunculannya. */
+    private static class Entri {
+        private final int nilai;
+        private final int frekuensi;
+
+        Entri(int nilai, int frekuensi) {
+            this.nilai = nilai;
+            this.frekuensi = frekuensi;
+        }
+
+        long jumlah() {
+            return (long) nilai * frekuensi;
+        }
+    }
+
+    private static final Comparator<Entri> BERDASARKAN_FREKUENSI =
+            Comparator.comparingInt((Entri e) -> e.frekuensi).thenComparingInt(e -> e.nilai);
+
+    private static final Comparator<Entri> BERDASARKAN_JUMLAH =
+            Comparator.comparingLong(Entri::jumlah).thenComparingInt(e -> e.nilai);
+
+    public static void main(String[] args) {
+        try (Scanner sc = new Scanner(System.in)) {
+            List<Integer> daftarNilai = bacaDaftarNilai(sc);
+
+            // Tidak ada data -> tidak ada yang ditampilkan
+            if (daftarNilai.isEmpty()) {
+                return;
+            }
+
+            tampilkanStatistik(daftarNilai);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Input
+    // ------------------------------------------------------------------
+
+    private static List<Integer> bacaDaftarNilai(Scanner sc) {
+        List<Integer> daftar = new ArrayList<>();
+        while (sc.hasNextLine()) {
+            String baris = sc.nextLine().trim();
+            if (baris.equals(PENANDA_SELESAI)) {
+                break;
+            }
+            if (baris.isEmpty()) {
+                continue;
+            }
+            try {
+                daftar.add(Integer.parseInt(baris));
+            } catch (NumberFormatException e) {
+                System.out.println("Data tidak valid");
             }
         }
+        return daftar;
+    }
 
-        // Kasus khusus 1x1
-        if (n == 1) {
-            System.out.println("Nilai L: Tidak Ada");
-            System.out.println("Nilai Kebalikan L: Tidak Ada");
-            System.out.println("Nilai Tengah: " + matrix[0][0]);
-            System.out.println("Perbedaan: Tidak Ada");
-            System.out.println("Dominan: " + matrix[0][0]);
-            return;
+    // ------------------------------------------------------------------
+    // Logika
+    // ------------------------------------------------------------------
+
+    private static List<Entri> hitungFrekuensi(List<Integer> daftarNilai) {
+        Map<Integer, Integer> frekuensi = new LinkedHashMap<>();
+        for (int nilai : daftarNilai) {
+            frekuensi.merge(nilai, 1, Integer::sum);
         }
 
-        // Kasus khusus 2x2
-        if (n == 2) {
-            int total = 0;
-            for (int i = 0; i < n; i++)
-                for (int j = 0; j < n; j++)
-                    total += matrix[i][j];
-
-            System.out.println("Nilai L: Tidak Ada");
-            System.out.println("Nilai Kebalikan L: Tidak Ada");
-            System.out.println("Nilai Tengah: " + total);
-            System.out.println("Perbedaan: Tidak Ada");
-            System.out.println("Dominan: " + total);
-            return;
+        List<Entri> hasil = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> e : frekuensi.entrySet()) {
+            hasil.add(new Entri(e.getKey(), e.getValue()));
         }
+        return hasil;
+    }
 
-        // Nilai L: kolom pertama (baris 0..n-2) + baris terakhir (kolom 0..n-2)
-        int nilaiL = 0;
-        for (int i = 0; i < n - 1; i++) nilaiL += matrix[i][0];
-        for (int j = 0; j < n - 1; j++) nilaiL += matrix[n - 1][j];
+    // ------------------------------------------------------------------
+    // Output
+    // ------------------------------------------------------------------
 
-        // Nilai Kebalikan L: kolom terakhir (baris 1..n-1) + baris pertama (kolom 1..n-1)
-        int nilaiKebalikanL = 0;
-        for (int i = 1; i < n; i++) nilaiKebalikanL += matrix[i][n - 1];
-        for (int j = 1; j < n; j++) nilaiKebalikanL += matrix[0][j];
+    private static void tampilkanStatistik(List<Integer> daftarNilai) {
+        List<Entri> daftarEntri = hitungFrekuensi(daftarNilai);
 
-        // Nilai Tengah
-        int nilaiTengah;
-        if (n % 2 == 1) {
-            nilaiTengah = matrix[n / 2][n / 2];
-        } else {
-            int mid = n / 2;
-            nilaiTengah = matrix[mid - 1][mid - 1] + matrix[mid - 1][mid]
-                    + matrix[mid][mid - 1] + matrix[mid][mid];
-        }
+        int tertinggi = Collections.max(daftarNilai);
+        int terendah = Collections.min(daftarNilai);
+        Entri terbanyak = Collections.max(daftarEntri, BERDASARKAN_FREKUENSI);
+        Entri tersedikit = Collections.min(daftarEntri, BERDASARKAN_FREKUENSI);
+        Entri jumlahTertinggi = Collections.max(daftarEntri, BERDASARKAN_JUMLAH);
+        Entri jumlahTerendah = Collections.min(daftarEntri, BERDASARKAN_JUMLAH);
 
-        int perbedaan = Math.abs(nilaiL - nilaiKebalikanL);
-        int dominan = (perbedaan == 0) ? nilaiTengah : Math.max(nilaiL, nilaiKebalikanL);
+        System.out.println("Tertinggi: " + tertinggi);
+        System.out.println("Terendah: " + terendah);
+        System.out.println("Terbanyak: " + formatFrekuensi(terbanyak));
+        System.out.println("Tersedikit: " + formatFrekuensi(tersedikit));
+        System.out.println("Jumlah Tertinggi: " + formatJumlah(jumlahTertinggi));
+        System.out.println("Jumlah Terendah: " + formatJumlah(jumlahTerendah));
+    }
 
-        System.out.println("Nilai L: " + nilaiL);
-        System.out.println("Nilai Kebalikan L: " + nilaiKebalikanL);
-        System.out.println("Nilai Tengah: " + nilaiTengah);
-        System.out.println("Perbedaan: " + perbedaan);
-        System.out.println("Dominan: " + dominan);
+    private static String formatFrekuensi(Entri e) {
+        return e.nilai + " (" + e.frekuensi + "x)";
+    }
+
+    private static String formatJumlah(Entri e) {
+        return e.nilai + " * " + e.frekuensi + " = " + e.jumlah();
     }
 }
