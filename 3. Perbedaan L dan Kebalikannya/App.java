@@ -1,83 +1,74 @@
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 public class App {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
-        int n = Integer.parseInt(sc.nextLine().trim());
+        // LinkedHashMap dipakai supaya urutan kemunculan pertama tiap nilai terjaga
+        Map<Integer, Integer> freq = new LinkedHashMap<>();
 
-        int[][] m = new int[n][n];
-        for (int i = 0; i < n; i++) {
-            String[] parts = sc.nextLine().trim().split("\\s+");
-            for (int j = 0; j < n; j++) {
-                m[i][j] = Integer.parseInt(parts[j]);
+        while (sc.hasNextLine()) {
+            String line = sc.nextLine().trim();
+            if (line.equals("---")) break;
+            if (line.isEmpty()) continue;
+            int nilai = Integer.parseInt(line);
+            freq.put(nilai, freq.getOrDefault(nilai, 0) + 1);
+        }
+
+        // Input kosong (langsung "---") -> tidak menampilkan apa pun
+        if (freq.isEmpty()) {
+            return;
+        }
+
+        Integer tertinggi = null, terendah = null;
+        Integer terbanyak = null, tersedikit = null;
+        Integer jumlahTertinggi = null, jumlahTerendah = null;
+
+        for (int nilai : freq.keySet()) {
+            if (tertinggi == null || nilai > tertinggi) tertinggi = nilai;
+            if (terendah == null || nilai < terendah) terendah = nilai;
+        }
+
+        for (int nilai : freq.keySet()) {
+            int f = freq.get(nilai);
+
+            // Terbanyak: frekuensi tertinggi, seri -> nilai lebih besar
+            if (terbanyak == null || f > freq.get(terbanyak)
+                    || (f == freq.get(terbanyak) && nilai > terbanyak)) {
+                terbanyak = nilai;
+            }
+
+            // Tersedikit: frekuensi terendah, seri -> nilai lebih kecil
+            if (tersedikit == null || f < freq.get(tersedikit)
+                    || (f == freq.get(tersedikit) && nilai < tersedikit)) {
+                tersedikit = nilai;
+            }
+
+            long jumlah = (long) nilai * f;
+
+            // Jumlah Tertinggi: nilai*frekuensi terbesar, seri -> nilai lebih besar
+            if (jumlahTertinggi == null
+                    || jumlah > (long) jumlahTertinggi * freq.get(jumlahTertinggi)
+                    || (jumlah == (long) jumlahTertinggi * freq.get(jumlahTertinggi) && nilai > jumlahTertinggi)) {
+                jumlahTertinggi = nilai;
+            }
+
+            // Jumlah Terendah: nilai*frekuensi terkecil, seri -> nilai lebih kecil
+            if (jumlahTerendah == null
+                    || jumlah < (long) jumlahTerendah * freq.get(jumlahTerendah)
+                    || (jumlah == (long) jumlahTerendah * freq.get(jumlahTerendah) && nilai < jumlahTerendah)) {
+                jumlahTerendah = nilai;
             }
         }
 
-        if (n == 1) {
-            int tengah = m[0][0];
-            System.out.println("Nilai L: Tidak Ada");
-            System.out.println("Nilai Kebalikan L: Tidak Ada");
-            System.out.println("Nilai Tengah: " + tengah);
-            System.out.println("Perbedaan: Tidak Ada");
-            System.out.println("Dominan: " + tengah);
-            return;
-        }
-
-        if (n == 2) {
-            int total = 0;
-            for (int i = 0; i < n; i++)
-                for (int j = 0; j < n; j++)
-                    total += m[i][j];
-            System.out.println("Nilai L: Tidak Ada");
-            System.out.println("Nilai Kebalikan L: Tidak Ada");
-            System.out.println("Nilai Tengah: " + total);
-            System.out.println("Perbedaan: Tidak Ada");
-            System.out.println("Dominan: " + total);
-            return;
-        }
-
-        // Nilai L: seluruh kolom pertama + sisa baris terakhir
-        // (tanpa sel pojok kiri bawah yang sudah terhitung di kolom,
-        // dan tanpa sel pojok kanan bawah)
-        int nilaiL = 0;
-        for (int i = 0; i < n; i++) {
-            nilaiL += m[i][0];
-        }
-        for (int j = 1; j < n - 1; j++) {
-            nilaiL += m[n - 1][j];
-        }
-
-        // Nilai Kebalikan L: seluruh kolom terakhir + sisa baris pertama
-        // (tanpa sel pojok kiri atas dan tanpa sel pojok kanan atas
-        // yang sudah terhitung di kolom)
-        int nilaiKebalikanL = 0;
-        for (int i = 0; i < n; i++) {
-            nilaiKebalikanL += m[i][n - 1];
-        }
-        for (int j = 1; j < n - 1; j++) {
-            nilaiKebalikanL += m[0][j];
-        }
-
-        int nilaiTengah;
-        if (n % 2 == 1) {
-            nilaiTengah = m[n / 2][n / 2];
-        } else {
-            int a = n / 2 - 1, b = n / 2;
-            nilaiTengah = m[a][a] + m[a][b] + m[b][a] + m[b][b];
-        }
-
-        int perbedaan = Math.abs(nilaiL - nilaiKebalikanL);
-        int dominan;
-        if (perbedaan == 0) {
-            dominan = nilaiTengah;
-        } else {
-            dominan = Math.max(nilaiL, nilaiKebalikanL);
-        }
-
-        System.out.println("Nilai L: " + nilaiL);
-        System.out.println("Nilai Kebalikan L: " + nilaiKebalikanL);
-        System.out.println("Nilai Tengah: " + nilaiTengah);
-        System.out.println("Perbedaan: " + perbedaan);
-        System.out.println("Dominan: " + dominan);
+        System.out.println("Tertinggi: " + tertinggi);
+        System.out.println("Terendah: " + terendah);
+        System.out.println("Terbanyak: " + terbanyak + " (" + freq.get(terbanyak) + "x)");
+        System.out.println("Tersedikit: " + tersedikit + " (" + freq.get(tersedikit) + "x)");
+        System.out.println("Jumlah Tertinggi: " + jumlahTertinggi + " * " + freq.get(jumlahTertinggi)
+                + " = " + ((long) jumlahTertinggi * freq.get(jumlahTertinggi)));
+        System.out.println("Jumlah Terendah: " + jumlahTerendah + " * " + freq.get(jumlahTerendah)
+                + " = " + ((long) jumlahTerendah * freq.get(jumlahTerendah)));
     }
 }
